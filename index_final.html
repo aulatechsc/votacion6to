@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Votación · Viaje de Egresados · Colegio San Carlos</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --rojo:    #e4051f;
+    --rojo-d:  #b80419;
+    --azul:    #00476c;
+    --azul-d:  #003452;
+    --azul-l:  #e8f3f8;
+    --blanco:  #ffffff;
+    --gris-f:  #f4f6f8;
+    --gris-b:  #e2e8ed;
+    --gris-t:  #6b7a87;
+    --texto:   #1a2530;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--gris-f);
+    color: var(--texto);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--azul);
+    position: relative;
+    overflow: hidden;
+    padding: 0 0 36px;
+  }
+  .header-stripe {
+    height: 6px;
+    background: var(--rojo);
+    width: 100%;
+  }
+  .header-body {
+    padding: 32px 24px 0;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  /* diagonal background detail */
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0; right: 0;
+    height: 40px;
+    background: var(--gris-f);
+    clip-path: ellipse(60% 100% at 50% 100%);
+  }
+  /* subtle dot pattern */
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+  }
+  .colegio-name {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 10px;
+  }
+  header h1 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(24px, 5.5vw, 42px);
+    font-weight: 700;
+    color: var(--blanco);
+    line-height: 1.15;
+    margin-bottom: 8px;
+  }
+  .header-sub {
+    font-size: 14px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.6);
+  }
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--rojo);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 36px 16px 80px;
+  }
+
+  /* ── STEPS ── */
+  .steps-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
+  }
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+  }
+  .step-circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--gris-b);
+    color: var(--gris-t);
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+    z-index: 1;
+  }
+  .step-circle.active { background: var(--azul); color: white; box-shadow: 0 0 0 4px rgba(0,71,108,0.15); }
+  .step-circle.done { background: var(--rojo); color: white; }
+  .step-label { font-size: 10px; font-weight: 600; color: var(--gris-t); letter-spacing: 0.05em; text-transform: uppercase; }
+  .step-line {
+    width: 60px; height: 2px;
+    background: var(--gris-b);
+    margin: 0 -2px;
+    margin-bottom: 20px;
+    transition: background 0.3s;
+  }
+  .step-line.done { background: var(--rojo); }
+
+  /* ── CARD ── */
+  .card {
+    background: white;
+    border-radius: 18px;
+    padding: 32px 28px;
+    box-shadow: 0 2px 24px rgba(0,71,108,0.09), 0 0 0 1px rgba(0,71,108,0.05);
+    animation: fadeUp 0.35s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(14px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .card-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--rojo);
+    margin-bottom: 8px;
+  }
+  .card h2 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 22px;
+    color: var(--azul);
+    margin-bottom: 22px;
+    line-height: 1.3;
+  }
+
+  /* ── INPUTS ── */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .field label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--azul);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  input[type="email"] {
+    padding: 13px 15px;
+    border: 2px solid var(--gris-b);
+    border-radius: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px;
+    color: var(--texto);
+    background: var(--gris-f);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input[type="email"]:focus {
+    border-color: var(--azul);
+    box-shadow: 0 0 0 3px rgba(0,71,108,0.1);
+    background: white;
+  }
+  .field-error {
+    font-size: 12px;
+    color: var(--rojo);
+    font-weight: 600;
+    display: none;
+  }
+  .field-error.show { display: block; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 2px solid var(--gris-b);
+    background: transparent;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--azul);
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { background: var(--azul); border-color: var(--azul); color: white; }
+  .tab:hover:not(.active) { border-color: var(--azul); }
+
+  /* ── STUDENT LIST ── */
+  .student-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-bottom: 22px;
+  }
+  .student-list::-webkit-scrollbar { width: 4px; }
+  .student-list::-webkit-scrollbar-track { background: var(--gris-b); border-radius: 4px; }
+  .student-list::-webkit-scrollbar-thumb { background: var(--azul); border-radius: 4px; opacity: 0.4; }
+
+  .s-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 2px solid var(--gris-b);
+    cursor: pointer;
+    transition: all 0.18s;
+    background: transparent;
+    text-align: left;
+    font-family: 'Nunito', sans-serif;
+    width: 100%;
+  }
+  .s-item:hover { border-color: var(--azul); background: var(--azul-l); }
+  .s-item.sel { border-color: var(--azul); background: var(--azul-l); }
+  .s-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--gris-b);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--azul);
+    flex-shrink: 0;
+    transition: all 0.18s;
+  }
+  .s-item.sel .s-avatar { background: var(--azul); color: white; }
+  .s-name { font-size: 13px; font-weight: 600; color: var(--texto); }
+  .s-course { font-size: 11px; color: var(--gris-t); margin-top: 1px; }
+  .s-check { margin-left: auto; color: var(--azul); opacity:0; font-size:18px; transition: opacity 0.18s; font-weight:700; }
+  .s-item.sel .s-check { opacity:1; }
+
+  .list-empty {
+    padding: 28px;
+    text-align: center;
+    color: var(--gris-t);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  /* ── PROPOSALS ── */
+  .proposal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .p-item {
+    padding: 18px 20px;
+    border-radius: 14px;
+    border: 2px solid var(--gris-b);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    text-align: left;
+    font-family: 'Nunito', sans-serif;
+    width: 100%;
+  }
+  .p-item:hover { border-color: var(--azul); }
+  .p-item.sel { border-color: var(--rojo); background: #fff5f5; }
+  .p-num {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gris-t);
+    margin-bottom: 3px;
+    transition: color 0.2s;
+  }
+  .p-item.sel .p-num { color: var(--rojo); }
+  .p-name {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--azul);
+    transition: color 0.2s;
+  }
+  .p-item.sel .p-name { color: var(--rojo-d); }
+
+  /* ── SUMMARY BOX ── */
+  .summary {
+    background: var(--azul-l);
+    border: 2px solid rgba(0,71,108,0.12);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .summary.show { display: block; }
+  .sum-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(0,71,108,0.08);
+  }
+  .sum-row:last-child { border-bottom: none; }
+  .sum-k { color: var(--gris-t); font-weight: 600; }
+  .sum-v { font-weight: 700; color: var(--azul); }
+
+  /* ── BUTTON ── */
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary { background: var(--azul); color: white; }
+  .btn-primary:hover:not(:disabled) { background: var(--azul-d); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,71,108,0.25); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    color: var(--gris-t);
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 18px;
+    padding: 0;
+  }
+  .btn-back:hover { color: var(--azul); }
+
+  /* ── LOADER ── */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── SUCCESS ── */
+  .success-wrap {
+    text-align: center;
+    padding: 48px 28px;
+  }
+  .success-icon {
+    width: 80px; height: 80px;
+    background: var(--rojo);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 36px;
+    animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both;
+    box-shadow: 0 8px 30px rgba(228,5,31,0.3);
+  }
+  @keyframes popIn {
+    from { transform: scale(0); opacity:0; }
+    to   { transform: scale(1); opacity:1; }
+  }
+  .success-wrap h2 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 26px;
+    color: var(--azul);
+    margin-bottom: 10px;
+  }
+  .success-wrap p { font-size: 14px; color: var(--gris-t); font-weight: 400; line-height: 1.6; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--azul-d);
+    color: white;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+    z-index: 200;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--rojo); }
+
+  /* ── ADMIN LINK ── */
+  .admin-link {
+    text-align: center;
+    margin-top: 28px;
+    font-size: 12px;
+    color: var(--gris-t);
+  }
+  .admin-link a { color: var(--azul); font-weight: 600; text-decoration: none; }
+  .admin-link a:hover { text-decoration: underline; }
+
+  .hidden { display: none !important; }
+
+  @media(max-width:480px) {
+    .card { padding: 24px 18px; }
+    .step-line { width: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-stripe"></div>
+  <div class="header-body">
+    <div class="colegio-name">Colegio San Carlos · 6° Grado</div>
+    <div class="header-badge">⛰ Egresados 2025</div>
+    <h1>Votación<br>Viaje de Egresados</h1>
+    <p class="header-sub">Elegí el destino de tu preferencia</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- STEPS -->
+  <div class="steps-row" id="steps-row">
+    <div class="step-item">
+      <div class="step-circle active" id="sc1">1</div>
+      <div class="step-label">Mail</div>
+    </div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step-item">
+      <div class="step-circle" id="sc2">2</div>
+      <div class="step-label">Alumno</div>
+    </div>
+    <div class="step-line" id="sl2"></div>
+    <div class="step-item">
+      <div class="step-circle" id="sc3">3</div>
+      <div class="step-label">Destino</div>
+    </div>
+  </div>
+
+  <!-- PASO 1: EMAIL -->
+  <div id="step-1">
+    <div class="card">
+      <div class="card-eyebrow">Paso 1 de 3</div>
+      <h2>¿Cuál es tu mail?</h2>
+      <div class="field">
+        <label for="email-in">Correo electrónico</label>
+        <input type="email" id="email-in" placeholder="tucorreo@ejemplo.com" autocomplete="email">
+        <span class="field-error" id="err-fmt">Ingresá un mail válido.</span>
+        <span class="field-error" id="err-dup">Este mail ya tiene un voto registrado.</span>
+      </div>
+      <button class="btn btn-primary" id="btn-email" onclick="submitEmail()">Continuar →</button>
+    </div>
+    <div class="admin-link">¿Sos docente? <a href="admin.html">Ver resultados</a></div>
+  </div>
+
+  <!-- PASO 2: ALUMNO -->
+  <div id="step-2" class="hidden">
+    <div class="card">
+      <button class="btn-back" onclick="goBack(1)">← Volver</button>
+      <div class="card-eyebrow">Paso 2 de 3</div>
+      <h2>¿Quién sos?</h2>
+      <div class="tabs" id="course-tabs">
+        <button class="tab active" onclick="filterCourse('todos',this)">Todos</button>
+        <button class="tab" onclick="filterCourse('Arrayán',this)">6° Arrayán</button>
+        <button class="tab" onclick="filterCourse('Jacarandá',this)">6° Jacarandá</button>
+        <button class="tab" onclick="filterCourse('Ceibo',this)">6° Ceibo</button>
+      </div>
+      <div class="student-list" id="student-list"></div>
+      <button class="btn btn-primary" id="btn-student" onclick="submitStudent()" disabled>Continuar →</button>
+    </div>
+  </div>
+
+  <!-- PASO 3: PROPUESTA -->
+  <div id="step-3" class="hidden">
+    <div class="card">
+      <button class="btn-back" onclick="goBack(2)">← Volver</button>
+      <div class="card-eyebrow">Paso 3 de 3</div>
+      <h2>¿Adónde querés ir?</h2>
+      <div class="proposal-list">
+        <button class="p-item" onclick="pickProposal(1,this)">
+          <div class="p-num">Propuesta 1</div>
+          <div class="p-name">Refugio del Valle</div>
+        </button>
+        <button class="p-item" onclick="pickProposal(2,this)">
+          <div class="p-num">Propuesta 2</div>
+          <div class="p-name">Altos del Tandil</div>
+        </button>
+        <button class="p-item" onclick="pickProposal(3,this)">
+          <div class="p-num">Propuesta 3</div>
+          <div class="p-name">Rocas Descanso</div>
+        </button>
+      </div>
+      <div class="summary" id="summary">
+        <div class="sum-row"><span class="sum-k">Alumno</span><span class="sum-v" id="sum-name"></span></div>
+        <div class="sum-row"><span class="sum-k">Curso</span><span class="sum-v" id="sum-course"></span></div>
+        <div class="sum-row"><span class="sum-k">Destino</span><span class="sum-v" id="sum-dest"></span></div>
+      </div>
+      <button class="btn btn-primary" id="btn-confirm" onclick="confirmVote()" disabled>
+        <span id="btn-txt">Confirmar voto</span>
+        <span id="btn-spin" class="spinner hidden"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="step-ok" class="hidden">
+    <div class="card success-wrap">
+      <div class="success-icon">✓</div>
+      <h2>¡Voto registrado!</h2>
+      <p>Gracias por participar,<br><strong id="ok-name"></strong>.<br>¡Que gane el mejor destino!</p>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- CONFIG: reemplazá estos valores con los de tu proyecto Supabase -->
+<script>
+const SUPABASE_URL = 'https://tyxlryxrllatnprlccce.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5eGxyeXhybGxhdG5wcmxjY2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzODI1MjIsImV4cCI6MjA5NDk1ODUyMn0.6BXk4Y9D6oNk2rO_mylbn_-2fjZ1hLCCOY5YAKBr0Ec';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const PROPOSALS = {1:'Refugio del Valle', 2:'Altos del Tandil', 3:'Rocas Descanso'};
+
+const STUDENTS = [
+  {name:'Ulises Daskal',course:'6° Arrayán'},
+  {name:'Joaquín Fortini',course:'6° Arrayán'},
+  {name:'Giovanni Genta Monroy',course:'6° Arrayán'},
+  {name:'Malena Giachetta Crescini',course:'6° Arrayán'},
+  {name:'Jazmín Gonzalez Bonifati',course:'6° Arrayán'},
+  {name:'Menling Huang',course:'6° Arrayán'},
+  {name:'Catalina Laurencena',course:'6° Arrayán'},
+  {name:'Federico Livani',course:'6° Arrayán'},
+  {name:'Julia Loncharich',course:'6° Arrayán'},
+  {name:'Facundo López Camino',course:'6° Arrayán'},
+  {name:'Camila Montero',course:'6° Arrayán'},
+  {name:'Tomás Pesce',course:'6° Arrayán'},
+  {name:'Milagros Tobaldi',course:'6° Arrayán'},
+  {name:'Tomás Trasancos',course:'6° Arrayán'},
+  {name:'Ignacio Utges Laudari',course:'6° Arrayán'},
+  {name:'Ornella Tiziana Zanirato Arbelaiz',course:'6° Arrayán'},
+  {name:'Mora Anastassiades',course:'6° Jacarandá'},
+  {name:'Sofía Emma Berardi',course:'6° Jacarandá'},
+  {name:'Julián Bertolano',course:'6° Jacarandá'},
+  {name:'Felipe Constantino Bustos',course:'6° Jacarandá'},
+  {name:'Emma Antonella Cazzulo',course:'6° Jacarandá'},
+  {name:'Emma Copó',course:'6° Jacarandá'},
+  {name:'Juana Ferrari',course:'6° Jacarandá'},
+  {name:'Nina Florindo',course:'6° Jacarandá'},
+  {name:'Amanda García',course:'6° Jacarandá'},
+  {name:'Camila Mora García',course:'6° Jacarandá'},
+  {name:'Franco Greca',course:'6° Jacarandá'},
+  {name:'Francisco Iglesias',course:'6° Jacarandá'},
+  {name:'Astor Odriozola Birriel',course:'6° Jacarandá'},
+  {name:'Josefina Ons',course:'6° Jacarandá'},
+  {name:'Giuliano Aquiles Pagnotta',course:'6° Jacarandá'},
+  {name:'Felicitas Ramayón Recke',course:'6° Jacarandá'},
+  {name:'Mia Rizzuto',course:'6° Jacarandá'},
+  {name:'Simón Robles',course:'6° Jacarandá'},
+  {name:'Juan Cruz Rojo',course:'6° Jacarandá'},
+  {name:'Aliaksandra Aliseika',course:'6° Ceibo'},
+  {name:'Felicitas Baldassarre',course:'6° Ceibo'},
+  {name:'Augusto Bares',course:'6° Ceibo'},
+  {name:'Joaquín Cacchione',course:'6° Ceibo'},
+  {name:'Juan Ignacio Chinikailo',course:'6° Ceibo'},
+  {name:'Helena D´Amico',course:'6° Ceibo'},
+  {name:'Isabella De Rubeis',course:'6° Ceibo'},
+  {name:'Milo Fernandez Petrina',course:'6° Ceibo'},
+  {name:'Sol Gomez Micaela',course:'6° Ceibo'},
+  {name:'Desirée Iwanczuk Mollar',course:'6° Ceibo'},
+  {name:'Bruno Koss Magud',course:'6° Ceibo'},
+  {name:'Justina Lederman',course:'6° Ceibo'},
+  {name:'Isabela Monacci',course:'6° Ceibo'},
+  {name:'Felipe Murphy Zapatero',course:'6° Ceibo'},
+  {name:'Oliver Nasser',course:'6° Ceibo'},
+  {name:'Matías Pedretti',course:'6° Ceibo'},
+  {name:'Juliana Perez Fazio',course:'6° Ceibo'},
+  {name:'Juan Pablo Portela',course:'6° Ceibo'},
+  {name:'Augusto Sassaro',course:'6° Ceibo'},
+  {name:'Guillermina Tilve',course:'6° Ceibo'},
+  {name:'Benicio Umeres',course:'6° Ceibo'},
+  {name:'Manuel Vailati Dominko',course:'6° Ceibo'},
+];
+
+// State
+let email = '', student = null, proposal = null;
+let votedStudents = [];
+let courseFilter = 'todos';
+
+// ── TOAST ──────────────────────────────────────────────
+function showToast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError?' error':'');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ── STEP INDICATOR ─────────────────────────────────────
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    const c = document.getElementById('sc'+i);
+    c.className = 'step-circle' + (i<n?' done': i===n?' active':'');
+    if (i<n) c.textContent = '✓';
+    else c.textContent = i;
+  });
+  [1,2].forEach(i => {
+    document.getElementById('sl'+i).className = 'step-line' + (i<n?' done':'');
+  });
+  ['step-1','step-2','step-3','step-ok'].forEach((id,idx) => {
+    document.getElementById(id).classList.toggle('hidden', idx+1 !== n);
+  });
+  document.getElementById('steps-row').classList.toggle('hidden', n===4);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function goBack(n) {
+  if(n===1){ email=''; setStep(1); }
+  if(n===2){ student=null; proposal=null; renderStudents(); setStep(2); }
+}
+
+// ── STEP 1 ─────────────────────────────────────────────
+async function submitEmail() {
+  const val = document.getElementById('email-in').value.trim().toLowerCase();
+  document.getElementById('err-fmt').classList.remove('show');
+  document.getElementById('err-dup').classList.remove('show');
+
+  if(!val || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)){
+    document.getElementById('err-fmt').classList.add('show'); return;
+  }
+
+  const btn = document.getElementById('btn-email');
+  btn.disabled = true;
+  btn.textContent = 'Verificando…';
+
+  try {
+    // Check duplicate email
+    const { data, error } = await db.from('votos').select('id').eq('email', val).maybeSingle();
+    if (error) throw error;
+    if (data) {
+      document.getElementById('err-dup').classList.add('show');
+      btn.disabled = false; btn.textContent = 'Continuar →'; return;
+    }
+    // Fetch voted students
+    const { data: vs } = await db.from('votos').select('student_name');
+    votedStudents = (vs||[]).map(r => r.student_name);
+    email = val;
+    renderStudents();
+    setStep(2);
+  } catch(e) {
+    showToast('Error al conectar. Intentá de nuevo.', true);
+  }
+  btn.disabled = false; btn.textContent = 'Continuar →';
+}
+
+document.getElementById('email-in').addEventListener('keydown', e => {
+  if(e.key==='Enter') submitEmail();
+});
+
+// ── STEP 2 ─────────────────────────────────────────────
+function filterCourse(f, btn) {
+  courseFilter = f;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderStudents();
+}
+
+function renderStudents() {
+  const list = document.getElementById('student-list');
+  const available = STUDENTS.filter(s => {
+    if(courseFilter !== 'todos' && !s.course.includes(courseFilter)) return false;
+    return !votedStudents.includes(s.name);
+  });
+  if(!available.length){
+    list.innerHTML = '<div class="list-empty">Todos los alumnos de este filtro ya votaron.</div>';
+    return;
+  }
+  list.innerHTML = available.map(s => {
+    const ini = s.name.split(' ').slice(0,2).map(w=>w[0]).join('');
+    const sel = student && student.name===s.name;
+    return `<button class="s-item${sel?' sel':''}" onclick="pickStudent('${s.name.replace(/'/g,"\\'")}','${s.course}',this)">
+      <div class="s-avatar">${ini}</div>
+      <div><div class="s-name">${s.name}</div><div class="s-course">${s.course}</div></div>
+      <span class="s-check">✓</span>
+    </button>`;
+  }).join('');
+}
+
+function pickStudent(name, course, el) {
+  student = {name, course};
+  document.querySelectorAll('.s-item').forEach(i=>i.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('btn-student').disabled = false;
+}
+
+function submitStudent() {
+  if(!student) return;
+  proposal = null;
+  document.querySelectorAll('.p-item').forEach(i=>i.classList.remove('sel'));
+  document.getElementById('btn-confirm').disabled = true;
+  document.getElementById('summary').classList.remove('show');
+  setStep(3);
+}
+
+// ── STEP 3 ─────────────────────────────────────────────
+function pickProposal(n, el) {
+  proposal = n;
+  document.querySelectorAll('.p-item').forEach(i=>i.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('btn-confirm').disabled = false;
+  document.getElementById('sum-name').textContent = student.name;
+  document.getElementById('sum-course').textContent = student.course;
+  document.getElementById('sum-dest').textContent = PROPOSALS[n];
+  document.getElementById('summary').classList.add('show');
+}
+
+async function confirmVote() {
+  if(!email||!student||!proposal) return;
+  const btn = document.getElementById('btn-confirm');
+  btn.disabled = true;
+  document.getElementById('btn-txt').textContent = 'Guardando…';
+  document.getElementById('btn-spin').classList.remove('hidden');
+
+  try {
+    const { error } = await db.from('votos').insert({
+      email,
+      student_name: student.name,
+      course: student.course,
+      proposal_num: proposal,
+      proposal_name: PROPOSALS[proposal],
+    });
+    if(error) throw error;
+    document.getElementById('ok-name').textContent = student.name.split(' ')[0];
+    setStep(4);
+  } catch(e) {
+    showToast('No se pudo guardar el voto. Intentá de nuevo.', true);
+    btn.disabled = false;
+    document.getElementById('btn-txt').textContent = 'Confirmar voto';
+    document.getElementById('btn-spin').classList.add('hidden');
+  }
+}
+</script>
+</body>
+</html>
